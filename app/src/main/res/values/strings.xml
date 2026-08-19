@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">空间时间气候层</string>
+    <string name="app_description">将时间、实时天气、湿度与空气质量轻盈铺展在共享空间中的常驻环境信息层。</string>
+    <string name="hello">空间时间气候层</string>
+</resources>

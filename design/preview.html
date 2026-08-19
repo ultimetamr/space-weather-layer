@@ -1,0 +1,415 @@
+<!--
+scope: web_design_validation_only
+source-interaction-revision: 7
+source-visual-revision: 3
+source-design-system-review-revision: 6
+preview-revision: 3
+-->
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>空间时间气候层 · Web 设计验证</title>
+  <style>
+    :root {
+      --accent: #8fbcc8;
+      --brand: #dceff3;
+      --ambient: rgba(255,255,255,.60);
+      --focused: rgba(255,255,255,.90);
+      --muted: #8fa9b5;
+      --surface: rgba(19,32,41,.12);
+      --control: rgba(19,32,41,.78);
+      --error: #e38c95;
+      --good: #78b6a0;
+      --moderate: #c6b56a;
+      --sensitive: #d49a68;
+      --unhealthy: #d17878;
+      --very: #a984b1;
+      --hazardous: #9f6670;
+      --s1: 4px; --s2: 8px; --s3: 16px; --s4: 24px; --s5: 32px;
+      --r-s: 12px; --r-m: 20px; --r-l: 32px;
+      --layer-alpha: .60;
+      color-scheme: dark;
+      font-family: Inter, "Noto Sans SC", "Microsoft YaHei", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; overflow: hidden; background: #30383a; color: white; }
+    button, input, select { font: inherit; }
+    button, select, input[type="range"] { min-height: 44px; }
+    button { color: inherit; background: rgba(255,255,255,.08); border: 1px solid rgba(220,239,243,.20); border-radius: var(--r-m); padding: 8px 14px; cursor: pointer; }
+    button:hover, button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; background: rgba(143,188,200,.18); }
+    button:disabled { opacity: .40; cursor: not-allowed; }
+    .room { position: fixed; inset: 0; background: #4b5453; }
+    .room::before { content:""; position:absolute; inset:58% 0 0; background:#55534d; border-top:1px solid rgba(255,255,255,.14); }
+    .room::after { content:""; position:absolute; left:50%; top:0; bottom:0; border-left:1px solid rgba(255,255,255,.07); }
+
+    .scope { position: fixed; left: 18px; top: 14px; z-index: 20; font: 500 12px/16px ui-monospace, monospace; color: rgba(255,255,255,.72); }
+    .scene { position: relative; z-index: 2; width: 100vw; height: 100vh; pointer-events: none; }
+    .window { position:absolute; color: var(--ambient); opacity: var(--layer-alpha); pointer-events:auto; transition: opacity 180ms cubic-bezier(.4,0,.2,1); }
+    .glass-regular { background: var(--surface); border: 1px solid rgba(220,239,243,.07); backdrop-filter: blur(12px); }
+    .glass-thick { background: var(--control); border: 1px solid rgba(220,239,243,.19); backdrop-filter: blur(28px); }
+    .window-frame { width:100%; height:100%; border-radius: var(--r-l); }
+
+    .time-window { left:50%; top:8%; width:640px; height:240px; transform:translateX(-50%); padding:16px; text-align:center; }
+    .weather-window { right:calc(50% + 350px); top:34%; width:520px; height:260px; padding:16px; }
+    .aqi-window { left:calc(50% + 350px); top:34%; width:420px; height:260px; padding:16px; }
+    .control-window { left:50%; top:34%; width:760px; height:520px; padding:24px; transform:translateX(-50%); z-index:7; display:none; opacity:1; }
+
+    .time-beacon { width:100%; height:100%; display:grid; grid-template-rows:144px 8px 56px; align-items:center; position:relative; }
+    .time-hero { justify-self:center; align-self:center; display:flex; align-items:baseline; gap:var(--s1); padding:var(--s2) var(--s3); border-radius:var(--r-m); }
+    .time-main { font-size:50px; line-height:60px; font-weight:100; letter-spacing:.02em; }
+    .seconds { font:300 32px/40px ui-monospace, monospace; display:none; }
+    .date-row { font-size:17px; line-height:24px; font-weight:400; margin-top:4px; }
+    .controls-entry { position:absolute; right:0; bottom:0; width:72px; min-height:56px; border-radius:var(--r-l); font-size:14px; }
+    .focus-outline { position:absolute; left:50%; top:18px; transform:translateX(-50%); width:320px; height:86px; border:1px solid var(--brand); border-radius:var(--r-m); display:none; color:transparent; pointer-events:none; }
+    .time-window[data-focused="true"] { opacity:max(var(--layer-alpha), .85); color:var(--focused); }
+    .time-window[data-focused="true"] .time-hero { background:rgba(19,32,41,.40); backdrop-filter:blur(12px); transform:scale(1.04); }
+    .time-window[data-focused="true"] .seconds, .time-window[data-focused="true"] .focus-outline { display:block; }
+
+    .weather-frame, .aqi-frame { display:grid; grid-template-rows:152px 8px 52px; padding:0 8px; }
+    .weather-readout { display:grid; grid-template:1fr 1fr / auto 1fr; column-gap:24px; row-gap:16px; align-items:center; }
+    .weather-condition { grid-column:1/3; display:flex; gap:16px; align-items:center; }
+    .weather-glyph { width:40px; height:40px; display:grid; place-items:center; color:var(--accent); font-size:38px; }
+    .condition-label { font-size:24px; line-height:32px; font-weight:300; }
+    .temperature { font:300 32px/40px ui-monospace, monospace; }
+    .humidity { font-size:17px; line-height:24px; }
+    .placeholder { display:none; font-size:17px; color:var(--muted); }
+
+    .aqi-readout { display:grid; place-items:center; align-content:center; gap:8px; }
+    .ring { width:96px; height:96px; border:3px solid color-mix(in srgb, var(--semantic) 82%, transparent); border-right-color:rgba(255,255,255,.12); border-radius:50%; display:grid; place-items:center; position:relative; }
+    .aqi-value { font:300 32px/40px ui-monospace, monospace; z-index:1; }
+    .arc-layer { position:absolute; inset:-3px; border:3px solid var(--semantic); border-right-color:transparent; border-radius:50%; color:transparent; }
+    .aqi-marker { position:absolute; width:14px; height:14px; top:-7px; background:var(--semantic); }
+    .aqi-label { font-size:17px; line-height:24px; font-weight:500; color:var(--semantic); }
+    .semantic-shape.circle { border-radius:50%; }
+    .semantic-shape.square { border-radius:1px; }
+    .semantic-shape.triangle { clip-path:polygon(50% 0,100% 100%,0 100%); }
+    .semantic-shape.diamond { transform:rotate(45deg); }
+    .semantic-shape.dashed { background:transparent!important; border:2px dashed currentColor; border-radius:50%; }
+
+    .freshness { display:grid; grid-template-columns:20px 1fr; column-gap:8px; align-items:center; font-size:14px; line-height:20px; color:var(--muted); }
+    .trust-shape { width:14px; height:14px; background:var(--trust-color); color:var(--trust-color); }
+    .trust-copy { display:flex; gap:4px; flex-wrap:wrap; }
+    .source { font:500 12px/16px ui-monospace, monospace; grid-column:2; }
+    .refresh-mark { display:none; color:var(--accent); }
+    .retry { display:none; min-width:56px; min-height:56px; }
+
+    .control-panel { height:100%; padding:24px; display:grid; grid-template-rows:64px 80px 80px 80px; gap:16px; overflow:auto; }
+    .control-panel[data-variant="opening"] { opacity:.88; transform:translateY(16px); }
+    .control-panel[data-variant="closing"] { opacity:0; }
+    .control-panel[data-variant="dragging"] .opacity-row,
+    .control-panel[data-variant="city"] .city-row { outline:2px solid var(--brand); outline-offset:2px; border-radius:var(--r-m); }
+    .control-header, .city-row, .opacity-row, .action-row { display:flex; align-items:center; gap:8px; }
+    .control-header h2 { margin:0; font-size:24px; line-height:32px; font-weight:300; }
+    .control-status { flex:1; color:var(--muted); font-size:14px; }
+    .icon-button { min-width:56px; min-height:56px; }
+    .city-current { flex:1; text-align:center; font-size:17px; }
+    .opacity-row input { flex:1; accent-color:var(--accent); min-height:56px; }
+    .opacity-value { width:52px; font:500 12px/16px ui-monospace, monospace; text-align:right; }
+    .action-row { justify-content:flex-end; }
+    .toggle { margin-right:auto; min-height:56px; display:flex; align-items:center; gap:8px; padding:8px 16px; border:1px solid rgba(220,239,243,.2); border-radius:var(--r-l); }
+    .toggle input { width:22px; height:22px; accent-color:var(--accent); }
+
+    .qa-panel { position:fixed; z-index:30; left:18px; bottom:18px; width:min(460px,calc(100vw - 36px)); max-height:42vh; overflow:auto; padding:12px; background:rgba(8,14,18,.94); border:1px solid rgba(220,239,243,.22); border-radius:16px; font-size:12px; }
+    .qa-panel summary { cursor:pointer; font-size:14px; font-weight:600; }
+    .qa-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:10px; }
+    .qa-grid button, .qa-grid select { min-width:0; min-height:36px; padding:5px 7px; border-radius:10px; font-size:11px; }
+    .qa-row { display:grid; grid-template-columns:100px 1fr; gap:8px; align-items:center; margin-top:8px; }
+    .qa-note { margin:8px 0 0; color:#b8c7cc; line-height:1.45; }
+    .state-pill { position:fixed; z-index:21; top:14px; right:18px; padding:8px 12px; background:rgba(8,14,18,.72); border-radius:20px; font:500 12px/16px ui-monospace,monospace; }
+
+    dialog { color:white; background:#132029; border:1px solid rgba(220,239,243,.25); border-radius:20px; padding:24px; max-width:420px; }
+    dialog::backdrop { background:rgba(0,0,0,.55); }
+    .dialog-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:24px; }
+
+    body[data-state="S5_CONTROLS_OPEN"] .control-window { display:block; }
+    body[data-state="S5_CONTROLS_OPEN"] .time-window,
+    body[data-state="S5_CONTROLS_OPEN"] .weather-window,
+    body[data-state="S5_CONTROLS_OPEN"] .aqi-window { opacity:calc(var(--layer-alpha) * .40); }
+    body[data-state="S3_MINIMAL_TIME"] .weather-window,
+    body[data-state="S3_MINIMAL_TIME"] .aqi-window { display:none; }
+    body[data-state="S4_SECONDS_FOCUSED"] .time-window { opacity:max(var(--layer-alpha), .85); }
+    body[data-state="S4_SECONDS_FOCUSED"] .time-hero { background:rgba(19,32,41,.40); backdrop-filter:blur(12px); transform:scale(1.04); }
+    body[data-state="S4_SECONDS_FOCUSED"] .seconds,
+    body[data-state="S4_SECONDS_FOCUSED"] .focus-outline { display:block; }
+    body[data-state="S6_REFRESHING"] .refresh-mark { display:inline; }
+    body[data-state="S0_BOOTSTRAP"] .weather-readout > :not(.placeholder),
+    body[data-state="S0_BOOTSTRAP"] .aqi-readout > :not(.placeholder) { visibility:hidden; }
+    body[data-state="S0_BOOTSTRAP"] .placeholder { display:block; visibility:visible; }
+    .weather-readout[data-state="loading"] > :not(.placeholder),
+    .weather-readout[data-state="error"] > :not(.placeholder),
+    .aqi-readout[data-state="loading"] > :not(.placeholder),
+    .aqi-readout[data-state="error"] > :not(.placeholder) { display:none; }
+
+    body[data-responsive="large"] .time-window { width:860px; height:300px; }
+    body[data-responsive="large"] .weather-window { width:720px; height:340px; right:calc(50% + 460px); }
+    body[data-responsive="large"] .aqi-window { width:580px; height:320px; left:calc(50% + 460px); }
+    body[data-responsive="large"] .control-window { width:960px; height:620px; }
+    body[data-responsive="large"] .aqi-frame { grid-template-rows:176px 8px 56px; }
+    body[data-responsive="large"] .weather-frame { grid-template-rows:192px 8px 56px; }
+    body[data-responsive="large"] .ring { width:112px; height:112px; }
+
+    body[data-responsive="constrained"] .time-window { width:520px; height:200px; }
+    body[data-responsive="constrained"] .weather-window { width:420px; height:220px; right:calc(50% + 290px); }
+    body[data-responsive="constrained"] .aqi-window { width:360px; height:220px; left:calc(50% + 290px); }
+    body[data-responsive="constrained"] .control-window { width:640px; height:420px; }
+    body[data-responsive="constrained"] .time-beacon { grid-template-rows:104px 8px 56px; }
+    body[data-responsive="constrained"] .time-hero { flex-wrap:wrap; max-width:280px; justify-content:center; }
+    body[data-responsive="constrained"] .weather-frame,
+    body[data-responsive="constrained"] .aqi-frame { grid-template-rows:136px 8px 44px; }
+    body[data-responsive="constrained"] .weather-readout { grid-template-columns:1fr; grid-template-rows:auto auto auto; gap:4px; }
+    body[data-responsive="constrained"] .weather-condition { grid-column:1; }
+    body[data-responsive="constrained"] .aqi-readout { grid-template-columns:72px 1fr; }
+    body[data-responsive="constrained"] .ring { width:64px; height:64px; }
+    body[data-responsive="constrained"] .control-panel { grid-template-columns:1fr 1fr; grid-template-rows:auto auto; }
+    body[data-responsive="constrained"] .control-header { grid-column:1/3; }
+    body[data-responsive="constrained"] .city-row,
+    body[data-responsive="constrained"] .opacity-row,
+    body[data-responsive="constrained"] .action-row { flex-wrap:wrap; align-content:center; }
+
+    body[data-reduce-motion="true"] *, body[data-reduce-motion="true"] *::before, body[data-reduce-motion="true"] *::after { transition-duration:110ms!important; animation:none!important; scroll-behavior:auto!important; }
+    body[data-reduce-motion="true"] .time-hero { transform:none!important; }
+    .is-error { color:var(--error)!important; }
+    .is-hidden { display:none!important; }
+    .closed-simulation .window { display:none!important; }
+  </style>
+</head>
+<body data-state="S1_AMBIENT_LIVE" data-responsive="compact" data-reduce-motion="false">
+  <div class="room" aria-hidden="true"></div>
+  <div class="scope">WEB DESIGN VALIDATION ONLY · not PICO runtime</div>
+  <div class="state-pill" data-preview-id="current_state">S1_AMBIENT_LIVE</div>
+
+  <main class="scene" aria-label="空间时间气候层预览">
+    <section class="window time-window" data-window="time" data-focused="false">
+      <div class="window-frame glass-regular time-beacon" data-component="TimeBeacon">
+        <div>
+          <div class="time-hero" tabindex="0" aria-label="时间区域">
+            <span data-preview-id="time_text" data-binding="ClockSnapshot.localTime" class="time-main">09:41</span>
+            <span data-preview-id="seconds_text" data-binding="ClockSnapshot.seconds" class="seconds">:26</span>
+          </div>
+          <div class="date-row"><span data-preview-id="date_text" data-binding="ClockSnapshot.localDate">8月14日</span> · <span data-preview-id="weekday_text" data-binding="ClockSnapshot.weekday">星期五</span></div>
+        </div>
+        <div></div>
+        <button data-preview-id="controls_action" data-binding="actions.openControls" data-action="TR08" class="controls-entry">⌁<br>控制</button>
+        <span data-preview-id="focus_outline" data-binding="UiState.timeFocused" class="focus-outline">时间已聚焦</span>
+      </div>
+    </section>
+
+    <section class="window weather-window" data-window="weather">
+      <div class="window-frame glass-regular weather-frame" data-component="WeatherGlyphReadout">
+        <div class="weather-readout">
+          <div class="weather-condition">
+            <span data-preview-id="condition_glyph" data-binding="WeatherSnapshot.weatherCode" class="weather-glyph semantic-shape circle">○</span>
+            <span data-preview-id="condition_label" data-binding="WeatherSnapshot.weatherCode" class="condition-label">晴</span>
+          </div>
+          <span data-preview-id="temperature_text" data-binding="WeatherSnapshot.temperatureC" class="temperature">26°</span>
+          <span data-preview-id="humidity_text" data-binding="WeatherSnapshot.relativeHumidity" class="humidity">湿度 48%</span>
+          <span data-preview-id="weather_placeholder" data-binding="DataFreshness.state" class="placeholder">天气读取中</span>
+        </div>
+        <div></div>
+        <div class="freshness" data-component="FreshnessBadge">
+          <span data-preview-id="trust_shape" data-binding="DataFreshness.state" class="trust-shape semantic-shape circle"></span>
+          <div class="trust-copy"><span data-preview-id="city_label" data-binding="City.displayName">北京</span> · <span data-preview-id="trust_label" data-binding="DataFreshness.state">实时</span> · <span data-preview-id="age_label" data-binding="DataFreshness.age">2分钟前</span> <span data-preview-id="refresh_mark" data-binding="DataFreshness.refreshing" class="refresh-mark">· 更新中</span></div>
+          <span data-preview-id="source_label" data-binding="DataFreshness.source" class="source">Open-Meteo</span>
+          <button data-preview-id="retry_action" data-binding="actions.refresh" data-action="TR02" class="retry">重试</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="window aqi-window" data-window="aqi">
+      <div class="window-frame glass-regular aqi-frame" data-component="AqiRingReadout">
+        <div class="aqi-readout" style="--semantic:var(--good)">
+          <div data-preview-id="aqi_track" class="ring" aria-label="AQI范围">
+            <span data-preview-id="aqi_arc" data-binding="AirQualitySnapshot.usAqi" class="arc-layer" aria-label="AQI进度">42</span>
+            <span data-preview-id="aqi_value" data-binding="AirQualitySnapshot.usAqi" class="aqi-value">42</span>
+            <span data-preview-id="aqi_shape" data-binding="AqiBand.key" class="aqi-marker semantic-shape circle"></span>
+          </div>
+          <span data-preview-id="aqi_label" data-binding="AqiBand.key" class="aqi-label">优</span>
+          <span data-preview-id="aqi_placeholder" data-binding="DataFreshness.state" class="placeholder">空气质量读取中</span>
+        </div>
+        <div></div>
+        <div class="freshness" data-mirror-of="FreshnessBadge" aria-label="空气质量数据可信度">
+          <span class="trust-shape semantic-shape circle"></span>
+          <div class="trust-copy"><span class="mirror-city">北京</span> · <span class="mirror-trust">实时</span> · <span class="mirror-age">2分钟前</span></div>
+          <span class="source mirror-source">Open-Meteo</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="window control-window" data-window="control">
+      <div class="window-frame glass-thick control-panel" data-component="AmbientControlPanel">
+        <header class="control-header">
+          <h2 data-preview-id="panel_title">城市与显示</h2>
+          <div data-preview-id="control_freshness" data-binding="DataFreshness" class="control-status">北京 · 实时 · 今天 09:39 · Open-Meteo</div>
+          <button data-preview-id="close_action" data-binding="actions.dismissControls" data-action="TR09" class="icon-button">关闭</button>
+        </header>
+        <div class="city-row">
+          <button data-preview-id="previous_city_action" data-binding="CityCatalog.items" data-action="TR10_PREV" class="icon-button">‹ 上一个城市</button>
+          <div data-preview-id="current_city_label" data-binding="selectedCityIndex" class="city-current">北京</div>
+          <button data-preview-id="next_city_action" data-binding="CityCatalog.items" data-action="TR10_NEXT" class="icon-button">下一个城市 ›</button>
+        </div>
+        <div class="opacity-row">
+          <button data-preview-id="opacity_decrease" data-binding="preferences.opacity" data-action="OPACITY_DOWN" class="icon-button">−</button>
+          <input data-preview-id="opacity_slider" data-binding="preferences.opacity" aria-label="信息层透明度" type="range" min="25" max="100" value="60">
+          <button data-preview-id="opacity_increase" data-binding="preferences.opacity" data-action="OPACITY_UP" class="icon-button">＋</button>
+          <output data-preview-id="opacity_value" data-binding="preferences.opacity" class="opacity-value">60%</output>
+        </div>
+        <div class="action-row">
+          <label data-preview-id="minimal_toggle" data-binding="preferences.minimalMode" class="toggle"><input type="checkbox">仅显示时间</label>
+          <button data-preview-id="refresh_action" data-binding="UiState.refreshing" data-action="TR02">刷新天气</button>
+          <button data-preview-id="done_action" data-binding="actions.dismissControls" data-action="TR09">完成</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <details class="qa-panel" open>
+    <summary>设计状态验证控制台</summary>
+    <p class="qa-note">这些按钮仅用于验证设计状态，不属于产品界面。所有产品操作仍在上方空间层内提供。</p>
+    <div class="qa-grid" id="stateButtons"></div>
+    <div class="qa-grid" id="transitionButtons"></div>
+    <div class="qa-row"><label for="dataMode">数据样例</label><select id="dataMode"><option value="normal">normal · 实时</option><option value="fallback">fallback · 缓存</option><option value="error">error · 更新失败</option><option value="demo">demo · 演示数据</option></select></div>
+    <div class="qa-row"><label for="responsive">窗口层级</label><select id="responsive"><option value="large">Large · max</option><option value="compact" selected>Compact · default</option><option value="constrained">Constrained · min</option></select></div>
+    <div class="qa-row"><label for="condition">天气变体</label><select id="condition"><option value="clear">晴</option><option value="cloudy">阴</option><option value="rain">雨</option><option value="snow">雪</option></select></div>
+    <div class="qa-row"><label for="aqiBand">AQI变体</label><select id="aqiBand"><option value="42">42 优</option><option value="51">51 良</option><option value="101">101 轻度污染</option><option value="151">151 中度污染</option><option value="201">201 重度污染</option><option value="301">301 严重污染</option><option value="999">999 数据异常</option></select></div>
+    <div class="qa-row"><label for="timeState">Time状态</label><select id="timeState"><option value="ambient">ambient</option><option value="boot">boot</option><option value="focused">focused</option><option value="editing-na">editing N/A</option><option value="error">error</option></select></div>
+    <div class="qa-row"><label for="weatherState">Weather状态</label><select id="weatherState"><option value="fresh">fresh</option><option value="loading">loading</option><option value="cached">cached/demo</option><option value="partial">partial</option><option value="editing-na">editing N/A</option><option value="error">error/empty</option></select></div>
+    <div class="qa-row"><label for="aqiState">AQI状态</label><select id="aqiState"><option value="fresh">fresh</option><option value="loading">loading</option><option value="cached">cached/demo</option><option value="boundary">boundary disabled</option><option value="editing-na">editing N/A</option><option value="error">error/empty</option></select></div>
+    <div class="qa-row"><label for="freshState">Freshness状态</label><select id="freshState"><option value="fresh">fresh</option><option value="loading">loading</option><option value="aging">aging</option><option value="cached">cached/offline/stale</option><option value="demo">demo</option><option value="error">partial/conflict/permission/error</option></select></div>
+    <div class="qa-row"><label for="controlState">Control状态</label><select id="controlState"><option value="ready">ready</option><option value="opening">opening</option><option value="dragging">dragging opacity</option><option value="city">city editing</option><option value="refreshing">refreshing</option><option value="boundary">boundary disabled</option><option value="error">error/empty</option><option value="closing">closing</option></select></div>
+    <div class="qa-row"><span>减少动态</span><label><input id="reduceMotion" type="checkbox"> Reduce Motion</label></div>
+    <p class="qa-note" data-preview-id="component_state_note">当前组件状态均会改变可见值、结构、禁用状态或焦点反馈；N/A 状态明确保留“只读”证据。</p>
+  </details>
+
+  <dialog id="exit_dialog" data-preview-id="exit_confirmation" aria-labelledby="exitTitle">
+    <h2 id="exitTitle">模拟系统显式关闭</h2>
+    <p>此对话框仅验证 TR14 的“显式关闭需确认”分支；生命周期停止不需要确认。</p>
+    <div class="dialog-actions"><button data-action="TR14_CANCEL">取消</button><button data-action="TR14_CONFIRM">确认关闭</button></div>
+  </dialog>
+
+  <script>
+    const states = {
+      S0_BOOTSTRAP:{sample:'normal'}, S1_AMBIENT_LIVE:{sample:'normal'}, S2_AMBIENT_CACHED:{sample:'fallback'},
+      S3_MINIMAL_TIME:{sample:'normal'}, S4_SECONDS_FOCUSED:{sample:'normal'}, S5_CONTROLS_OPEN:{sample:'normal'},
+      S6_REFRESHING:{sample:'normal'}, S7_DEMO_OR_ERROR:{sample:'demo'}
+    };
+    const transitions = {
+      TR01:{from:'process',to:'S0_BOOTSTRAP'}, TR02:{from:'S0/S2/S5/S7',to:'S6_REFRESHING'},
+      TR03:{from:'S6_REFRESHING',to:'S1_AMBIENT_LIVE'}, TR04:{from:'S6_REFRESHING',to:'S2_AMBIENT_CACHED'},
+      TR05:{from:'S6/S0',to:'S7_DEMO_OR_ERROR'}, TR06:{from:'ambient',to:'S4_SECONDS_FOCUSED'},
+      TR07:{from:'S4_SECONDS_FOCUSED',to:'previous'}, TR08:{from:'ambient',to:'S5_CONTROLS_OPEN'},
+      TR09:{from:'S5_CONTROLS_OPEN',to:'previous'}, TR10:{from:'S5_CONTROLS_OPEN',to:'S6_REFRESHING'},
+      TR11:{from:'S5_CONTROLS_OPEN',to:'S5_CONTROLS_OPEN'}, TR12:{from:'full',to:'S3_MINIMAL_TIME'},
+      TR13:{from:'S3/S5',to:'S0_BOOTSTRAP'}, TR14:{from:'visible',to:'process exit',confirmation:true}
+    };
+    const samples = {
+      normal:{city:'北京',temp:'26°',humidity:'湿度 48%',condition:'clear',aqi:42,trust:'fresh',trustLabel:'实时',age:'2分钟前',source:'Open-Meteo'},
+      fallback:{city:'上海',temp:'21°',humidity:'湿度 76%',condition:'rain',aqi:96,trust:'cached',trustLabel:'缓存',age:'42分钟前',source:'Open-Meteo'},
+      error:{city:'成都',temp:'--°',humidity:'湿度 --%',condition:'cloudy',aqi:null,trust:'error',trustLabel:'更新失败',age:'时间未知',source:'来源未知'},
+      demo:{city:'深圳',temp:'28°',humidity:'湿度 65%',condition:'cloudy',aqi:68,trust:'demo',trustLabel:'演示数据',age:'非实时',source:'本地演示'}
+    };
+    const cities=['北京','上海','深圳','成都'];
+    let currentState='S1_AMBIENT_LIVE', previousState='S1_AMBIENT_LIVE', cityIndex=0, componentOverrides={};
+    const $=(q)=>document.querySelector(q), $$=(q)=>[...document.querySelectorAll(q)];
+    const setText=(id,value)=>{const el=$(`[data-preview-id="${id}"]`); if(el) el.textContent=value;};
+    const shapeClass=(kind)=>`semantic-shape ${kind}`;
+    const trustMap={fresh:['circle','#8fbcc8','实时'],aging:['square','#c6b56a','待更新'],cached:['dashed','#d49a68','缓存'],demo:['diamond','#a984b1','演示数据'],error:['triangle','#e38c95','更新失败'],loading:['dashed','#8fa9b5','正在获取']};
+    const conditionMap={clear:['○','晴','circle','#9ac5c9'],cloudy:['□','阴','square','#aab4bf'],rain:['☂','雨','dashed','#81a9bd'],snow:['◇','雪','diamond','#c2d3dc']};
+    const aqiBand=(n)=> n==null?['--','暂不可用','dashed','#e38c95'] : n<0||n>500?[String(n),'数据异常','dashed','#e38c95'] : n<=50?[n,'优','circle','#78b6a0'] : n<=100?[n,'良','square','#c6b56a'] : n<=150?[n,'轻度污染','triangle','#d49a68'] : n<=200?[n,'中度污染','diamond','#d17878'] : n<=300?[n,'重度污染','dashed','#a984b1']:[n,'严重污染','triangle','#9f6670'];
+
+    function applyCondition(kind){
+      const [glyph,label,shape,color]=conditionMap[kind]||conditionMap.cloudy;
+      setText('condition_glyph',glyph); setText('condition_label',label);
+      $('[data-preview-id="condition_glyph"]').className=`weather-glyph ${shapeClass(shape)}`;
+      $('[data-preview-id="condition_glyph"]').style.color=color;
+    }
+    function applyAqi(value){
+      const [num,label,shape,color]=aqiBand(value); setText('aqi_arc',num); setText('aqi_value',num); setText('aqi_label',label);
+      $('.aqi-readout').style.setProperty('--semantic',color); $('[data-preview-id="aqi_shape"]').className=`aqi-marker ${shapeClass(shape)}`;
+    }
+    function applyTrust(kind, sample){
+      const [shape,color,label]=trustMap[kind]||trustMap.error;
+      const node=$('[data-preview-id="trust_shape"]'); node.className=`trust-shape ${shapeClass(shape)}`; node.style.setProperty('--trust-color',color); node.style.background=color; node.style.color=color;
+      setText('trust_label',label); setText('city_label',sample.city); setText('age_label',sample.age); setText('source_label',sample.source);
+      $$('.aqi-window .trust-shape').forEach(e=>{e.className=`trust-shape ${shapeClass(shape)}`;e.style.background=color;e.style.color=color;});
+      $$('.mirror-city').forEach(e=>e.textContent=sample.city); $$('.mirror-trust').forEach(e=>e.textContent=label); $$('.mirror-age').forEach(e=>e.textContent=sample.age); $$('.mirror-source').forEach(e=>e.textContent=sample.source);
+      setText('control_freshness',`${sample.city} · ${label} · ${sample.age} · ${sample.source}`);
+      $('[data-preview-id="retry_action"]').style.display=kind==='error'?'block':'none';
+    }
+    function applySample(mode){
+      const s={...samples[mode]}; s.city=cities[cityIndex]||s.city;
+      setText('temperature_text',s.temp); setText('humidity_text',s.humidity); setText('current_city_label',s.city);
+      applyCondition(s.condition); applyAqi(s.aqi); applyTrust(s.trust,s);
+      $('#condition').value=s.condition; $('#aqiBand').value=s.aqi==null?'999':String([42,51,101,151,201,301,999].find(v=>v>=s.aqi)||999);
+    }
+    function renderComponentOverrides(){
+      const w=componentOverrides.weather||'fresh', a=componentOverrides.aqi||'fresh', f=componentOverrides.fresh||samples[$('#dataMode').value].trust, c=componentOverrides.control||'ready', t=componentOverrides.time||'ambient';
+      const wp=$('[data-preview-id="weather_placeholder"]'), ap=$('[data-preview-id="aqi_placeholder"]');
+      $('.weather-readout').dataset.state=w; $('.aqi-readout').dataset.state=a;
+      wp.style.display=(currentState==='S0_BOOTSTRAP'||w==='loading'||w==='error')?'block':'none'; ap.style.display=(currentState==='S0_BOOTSTRAP'||a==='loading'||a==='error')?'block':'none';
+      if(w==='loading') wp.textContent='天气读取中'; if(w==='error') wp.textContent='天气暂不可用';
+      if(w==='partial') setText('humidity_text','湿度 --%'); if(w==='editing-na') wp.textContent='天气为只读信息';
+      if(a==='loading') ap.textContent='空气质量读取中'; if(a==='error'){ap.textContent='空气质量暂不可用';applyAqi(null);} if(a==='boundary') applyAqi(999); if(a==='editing-na') ap.textContent='空气质量为只读信息';
+      if(t==='boot') setText('time_text','--:--'); else if(t==='error') setText('time_text','--:--');
+      $('[data-preview-id="weekday_text"]').classList.toggle('is-hidden',t==='error');
+      $('.time-window').dataset.focused=t==='focused'?'true':'false';
+      const sample={...samples[$('#dataMode').value],city:cities[cityIndex]}; applyTrust(f,sample);
+      const refresh=c==='refreshing'; $('[data-preview-id="refresh_action"]').disabled=refresh; setText('refresh_action',refresh?'更新中':'刷新天气');
+      $('[data-preview-id="opacity_decrease"]').disabled=c==='boundary'; $('[data-preview-id="opacity_increase"]').disabled=c==='boundary';
+      $('[data-preview-id="previous_city_action"]').disabled=c==='boundary'; $('[data-preview-id="next_city_action"]').disabled=c==='boundary';
+      $('.control-panel').dataset.variant=c; $('.control-status').classList.toggle('is-error',c==='error');
+      if(c==='dragging') setText('control_freshness','正在预览透明度');
+      if(c==='city') setText('current_city_label',`${cities[cityIndex]} · 正在更新`);
+      if(c==='error'){ setText('control_freshness','更新失败 · 保留设置'); setText('refresh_action','重试'); }
+      $('[data-preview-id="component_state_note"]').textContent=`Time ${t} · Weather ${w} · AQI ${a} · Freshness ${f} · Controls ${c}`;
+    }
+    function renderScene(state, explicitMode){
+      if(currentState!==state && currentState!=='S4_SECONDS_FOCUSED' && currentState!=='S5_CONTROLS_OPEN') previousState=currentState;
+      currentState=state; document.body.dataset.state=state; $('[data-preview-id="current_state"]').textContent=state;
+      const mode=explicitMode||states[state]?.sample||$('#dataMode').value; $('#dataMode').value=mode; applySample(mode);
+      setText('time_text',state==='S0_BOOTSTRAP'?'--:--':'09:41');
+      if(state==='S2_AMBIENT_CACHED') applySample('fallback');
+      if(state==='S7_DEMO_OR_ERROR') applySample($('#dataMode').value==='error'?'error':'demo');
+      renderComponentOverrides();
+    }
+    function triggerTransition(id){
+      if(id==='TR01') return renderScene('S0_BOOTSTRAP');
+      if(id==='TR02') return renderScene('S6_REFRESHING');
+      if(id==='TR03') return renderScene('S1_AMBIENT_LIVE','normal');
+      if(id==='TR04') return renderScene('S2_AMBIENT_CACHED','fallback');
+      if(id==='TR05') return renderScene('S7_DEMO_OR_ERROR','demo');
+      if(id==='TR06') return renderScene('S4_SECONDS_FOCUSED');
+      if(id==='TR07') return renderScene(previousState||'S1_AMBIENT_LIVE');
+      if(id==='TR08') return renderScene('S5_CONTROLS_OPEN');
+      if(id==='TR09') return renderScene(previousState==='S5_CONTROLS_OPEN'?'S1_AMBIENT_LIVE':previousState);
+      if(id==='TR10_NEXT'||id==='TR10_PREV'||id==='TR10'){cityIndex=(cityIndex+(id==='TR10_PREV'?-1:1)+cities.length)%cities.length; applySample($('#dataMode').value); return renderScene('S6_REFRESHING');}
+      if(id==='TR11') return renderScene('S5_CONTROLS_OPEN');
+      if(id==='TR12') return renderScene('S3_MINIMAL_TIME');
+      if(id==='TR13') return renderScene('S0_BOOTSTRAP');
+      if(id==='TR14') return $('#exit_dialog').showModal();
+    }
+    $('#stateButtons').innerHTML=Object.keys(states).map(s=>`<button data-state-trigger="${s}">${s.replace('S'+s[1]+'_','')}</button>`).join('');
+    $('#transitionButtons').innerHTML=Object.keys(transitions).map(t=>`<button data-transition="${t}">${t}</button>`).join('');
+    document.addEventListener('click',e=>{
+      const state=e.target.dataset.stateTrigger, tr=e.target.dataset.transition, action=e.target.closest('[data-action]')?.dataset.action;
+      if(state) renderScene(state); if(tr) triggerTransition(tr); if(action){
+        if(action==='TR14_CANCEL') $('#exit_dialog').close(); else if(action==='TR14_CONFIRM'){ $('#exit_dialog').close(); document.body.classList.add('closed-simulation'); $('[data-preview-id="current_state"]').textContent='PROCESS_EXIT'; }
+        else if(action==='OPACITY_DOWN'||action==='OPACITY_UP'){ const r=$('[data-preview-id="opacity_slider"]'); r.value=Math.max(25,Math.min(100,+r.value+(action==='OPACITY_DOWN'?-5:5))); r.dispatchEvent(new Event('input')); }
+        else triggerTransition(action);
+      }
+    });
+    $('#dataMode').addEventListener('change',e=>applySample(e.target.value));
+    $('#responsive').addEventListener('change',e=>document.body.dataset.responsive=e.target.value);
+    $('#reduceMotion').addEventListener('change',e=>document.body.dataset.reduceMotion=String(e.target.checked));
+    $('#condition').addEventListener('change',e=>applyCondition(e.target.value));
+    $('#aqiBand').addEventListener('change',e=>applyAqi(+e.target.value));
+    [['timeState','time'],['weatherState','weather'],['aqiState','aqi'],['freshState','fresh'],['controlState','control']].forEach(([id,key])=>$('#'+id).addEventListener('change',e=>{componentOverrides[key]=e.target.value;renderComponentOverrides();}));
+    $('[data-preview-id="opacity_slider"]').addEventListener('input',e=>{const v=+e.target.value;document.documentElement.style.setProperty('--layer-alpha',v/100);setText('opacity_value',v+'%');currentState='S5_CONTROLS_OPEN';document.body.dataset.state=currentState;$('[data-preview-id="current_state"]').textContent=currentState;});
+    $('[data-preview-id="minimal_toggle"] input').addEventListener('change',e=>triggerTransition(e.target.checked?'TR12':'TR13'));
+    $('.time-hero').addEventListener('mouseenter',()=>triggerTransition('TR06')); $('.time-hero').addEventListener('mouseleave',()=>{if(currentState==='S4_SECONDS_FOCUSED')triggerTransition('TR07')});
+    $('.time-hero').addEventListener('focus',()=>triggerTransition('TR06')); $('.time-hero').addEventListener('blur',()=>{if(currentState==='S4_SECONDS_FOCUSED')triggerTransition('TR07')});
+    renderScene('S1_AMBIENT_LIVE');
+  </script>
+</body>
+</html>

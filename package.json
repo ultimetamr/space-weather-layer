@@ -1,0 +1,11 @@
+{
+  "name": "space-weather-layer-preview-validation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:preview": "node design/preview-dom-test.mjs"
+  },
+  "devDependencies": {
+    "jsdom": "26.1.0"
+  }
+}
